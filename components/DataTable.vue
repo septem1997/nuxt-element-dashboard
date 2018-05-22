@@ -2,6 +2,7 @@
   <div class="data-table">
     <!--搜索字段-->
     <el-form-renderer v-if="searchForm.length > 0" inline :content="searchForm" ref="searchForm">
+      <slot name="search"></slot>
       <el-form-item>
         <el-button type="primary" @click="onSearch">查询</el-button>
         <el-button @click="onResetSearch">重置</el-button>
@@ -135,7 +136,6 @@
 import _get from 'lodash/get'
 
 // TODO
-// row状态不同, 操作列显示不同文字
 // doc
 // test
 
@@ -158,7 +158,7 @@ const treeChildKey = 'children'
 const dialogForm = 'dialogForm'
 
 // TODO 组件文档待补全
-// 相关事件 selection-change, update (数据更新后触发)
+// 相关事件 selection-change, update (数据更新后触发), reset (重置按钮后触发)
 export default {
   props: {
     url: {
@@ -299,6 +299,13 @@ export default {
     // 新增/修改提交时注入额外的参数
     extraParams: {
       type: Object
+    },
+    // 外部的search注入额外的查询参数, 键值对形式
+    customQuery: {
+      type: Object,
+      default() {
+        return {}
+      }
     }
   },
   name: 'DataTable',
@@ -321,7 +328,11 @@ export default {
       isView: false,
       confirmLoading: false,
       // 要修改的那一行
-      row: {}
+      row: {},
+
+      // 初始的customQuery值, 重置查询时, 会用到
+      // JSON.stringify是为了后面深拷贝作准备
+      initCustomQuery: JSON.stringify(this.customQuery)
     }
   },
   mounted() {
@@ -335,6 +346,24 @@ export default {
     url: function(val, old) {
       this.page = this.firstPage
       this.getList()
+    },
+    dialogVisible: function(val, old) {
+      if (!val) {
+        this.isNew = false
+        this.isEdit = false
+        this.isView = false
+        this.confirmLoading = false
+
+        this.$refs[dialogForm].resetFields()
+
+        // fix element bug https://github.com/ElemeFE/element/issues/8615
+        // 重置select 为multiple==true时值为[undefined]
+        this.form.forEach(entry => {
+          if (entry.$type === 'select' && entry.$el.multiple) {
+            this.$refs[dialogForm].updateValue({id: entry.$id, value: []})
+          }
+        })
+      }
     }
   },
   methods: {
@@ -343,8 +372,10 @@ export default {
       let query = this.query || {}
       let size = this.hasPagination ? this.size : this.noPaginationSize
 
-      console.warn('DataTable: url 为空, 不发送请求')
-      if (!url) return
+      if (!url) {
+        console.warn('DataTable: url 为空, 不发送请求')
+        return
+      }
 
       // 拼接 query
       if (url.indexOf('?') > -1) url += '&'
@@ -386,7 +417,7 @@ export default {
 
           this.loading = false
           // 返回原始数据
-          this.$emit('update', data)
+          this.$emit('update', data, resp)
         })
         .catch(err => {
           this.loading = false
@@ -410,11 +441,17 @@ export default {
     },
     onSearch() {
       const data = this.$refs.searchForm.getFormValue()
-      this.query = Object.assign({}, data)
+      const customQuery = this.customQuery
+      this.query = Object.assign({}, data, customQuery)
     },
     onResetSearch() {
       this.$refs.searchForm.resetFields()
       this.query = {}
+      this.$emit('reset')
+      this.$emit(
+        'update:customQuery',
+        Object.assign(this.customQuery, JSON.parse(this.initCustomQuery))
+      )
     },
     // 弹窗相关
     onDefaultNew(e) {
@@ -426,16 +463,6 @@ export default {
       this.isView = false
       this.dialogTitle = this.dialogNewTitle
       this.dialogVisible = true
-
-      this.$nextTick(() => {
-        this.form.forEach(entry => {
-          // 使用$enableWhen存放隐藏属性, 有可能新增时会注入值, 所以不update
-          // if ('$enableWhen' in entry) return
-
-          // $refs 只在组件渲染完成后才填充
-          this.$refs[dialogForm].updateValue({id: entry.$id, value: ''})
-        })
-      })
     },
     onDefaultEdit(row) {
       if (this.onEdit) {
@@ -458,11 +485,7 @@ export default {
       })
     },
     cancel() {
-      this.isNew = false
-      this.isEdit = false
-      this.isView = false
       this.dialogVisible = false
-      this.confirmLoading = false
     },
     confirm() {
       this.$refs[dialogForm].validate(valid => {
@@ -505,36 +528,47 @@ export default {
         return this.onDelete(row)
       }
       this.$confirm('确认删除吗', '提示', {
-        type: 'warning'
+        type: 'warning',
+        beforeClose: (action, instance, done) => {
+          if (action == 'confirm') {
+            instance.confirmButtonLoading = true
+
+            // 单个删除
+            if (!this.hasSelect) {
+              this.$axios
+                .$delete(this.url + '/' + row.id || row._id)
+                .then(resp => {
+                  instance.confirmButtonLoading = false
+                  done()
+                  this.showMessage(true)
+                  this.getList()
+                })
+                .catch(er => {
+                  instance.confirmButtonLoading = false
+                })
+            } else {
+              // 多选模式
+              this.$axios
+                .$delete(
+                  this.url +
+                    '/' +
+                    this.selected.map(v => v._id || v.id).toString()
+                )
+                .then(resp => {
+                  instance.confirmButtonLoading = false
+                  done()
+                  this.showMessage(true)
+                  this.getList()
+                })
+                .catch(er => {
+                  instance.confirmButtonLoading = false
+                })
+            }
+          } else done()
+        }
+      }).catch(er => {
+        /*取消*/
       })
-        .then(resp => {
-          // 单个删除
-          if (!this.hasSelect) {
-            this.$axios
-              .$delete(this.url + '/' + row.id || row._id)
-              .then(resp => {
-                this.getList()
-
-                this.showMessage(true)
-              })
-          } else {
-            // 多选模式
-            this.$axios
-              .$delete(
-                this.url +
-                  '/' +
-                  this.selected.map(v => v._id || v.id).toString()
-              )
-              .then(resp => {
-                this.getList()
-
-                this.showMessage(true)
-              })
-          }
-        })
-        .catch(er => {
-          /*取消 */
-        })
     },
     // 树形table相关
     // https://github.com/PanJiaChen/vue-element-admin/tree/master/src/components/TreeTable
@@ -616,9 +650,9 @@ export default {
     width: space-width;
     height: 14px;
 
-    &::before {
-      content: '';
-    }
+  &::before {
+     content: '';
+   }
   }
 
   .tree-ctrl {
