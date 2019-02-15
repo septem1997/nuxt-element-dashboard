@@ -93,17 +93,11 @@ export default {
           {
             $type: 'select',
             $id: 'type',
-            label: '类型',
-            $options: [
-              {
-                label: '前端组件',
-                value: '1'
-              },
-              {
-                label: '后端组件',
-                value: '2'
-              }
-            ],
+            label: '分类',
+            $options: this.$store.state.typeMap.map((value, index) => ({
+              value: index,
+              label: value
+            })),
             $el: {
               placeholder: '请选择'
             }
@@ -112,16 +106,10 @@ export default {
             $type: 'select',
             $id: 'status',
             label: '状态',
-            $options: [
-              {
-                label: '上架',
-                value: '1'
-              },
-              {
-                label: '下架',
-                value: '0'
-              }
-            ],
+            $options: this.$store.state.statusMap.map((value, index) => ({
+              value: index,
+              label: value
+            })),
             $el: {
               placeholder: '请选择'
             }
@@ -146,40 +134,68 @@ export default {
           {
             $id: 'type',
             $type: 'select',
-            label: '类型',
+            label: '分类',
+            $default: null,
             $el: {
               placeholder: '请选择',
-              style: 'width: 100%' // select 占据 100% 宽度
+              style: 'width: 100%'
             },
             rules: [
               {
                 required: true,
-                message: '请选择类型',
+                message: '请选择分类',
                 trigger: 'blur'
               }
             ],
-            $options: [
+            $options: this.$store.state.typeMap.map((value, index) => ({
+              label: value,
+              value: index + 1
+            }))
+          },
+          {
+            $type: 'input',
+            $id: 'version',
+            label: '版本',
+            $el: {
+              placeholder: '请输入'
+            },
+            rules: [
               {
-                label: '前端组件',
-                value: 1
-              },
-              {
-                label: '后端组件',
-                value: 2
-              },
-              {
-                label: '中端组件',
-                value: 3
-              },
-              {
-                label: '大后端组件',
-                value: 4
-              },
-              {
-                label: '小后端组件',
-                value: 5
+                required: true,
+                message: '请输入版本号',
+                trigger: 'blur'
               }
             ]
+          },
+          {
+            $id: 'language',
+            $type: 'select',
+            label: '开发语言',
+            $el: {
+              placeholder: '请选择',
+              style: 'width: 100%'
+            },
+            rules: [
+              {
+                required: true,
+                message: '请选择语言',
+                trigger: 'blur'
+              }
+            ],
+            $options: this.$store.state.languageMap.map((value, index) => ({
+              label: value,
+              value: index + 1
+            }))
+          },
+          {
+            $id: 'updateTime',
+            $type: 'date-picker',
+            label: '更新时间',
+            $el: {
+              placeholder: '请选择',
+              valueFormat: 'yyyy-MM-dd',
+              style: 'width: 100%'
+            }
           },
           {
             $id: 'status',
@@ -187,7 +203,7 @@ export default {
             label: '状态',
             $el: {
               placeholder: '请选择',
-              style: 'width: 100%' // select 占据 100% 宽度
+              style: 'width: 100%'
             },
             rules: [
               {
@@ -196,40 +212,16 @@ export default {
                 trigger: 'blur'
               }
             ],
-            $options: [
-              {
-                label: '上架',
-                value: 1
-              },
-              {
-                label: '下架',
-                value: 0
-              }
-            ]
-          },
-          {
-            $id: 'updateTime',
-            $type: 'date-picker',
-            label: '更新时间',
-            $el: {
-              placeholder: '请选择',
-              valueFormat: 'yyyy-MM-dd'
-            }
+            $options: this.$store.state.statusMap.map((value, index) => ({
+              label: value,
+              value: index
+            }))
           }
         ]
       }
     }
   },
-  methods: {
-    onSubmit() {
-      console.log(this.$refs)
-    },
-    resetForm() {
-      this.$refs.query.resetFields()
-    },
-    onDelete() {},
-    add() {}
-  }
+  methods: {}
 }
 </script>
 

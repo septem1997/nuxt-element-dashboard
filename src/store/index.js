@@ -12,20 +12,8 @@ export const state = () => ({
   user: {},
   menuList: [],
   permission: {},
-  typeMap: {
-    '1': '前端组件',
-    '2': '后端组件',
-    '3': '应用服务',
-    '4': '分布式工具',
-    '5': '微服务'
-  },
-  languageMap: {
-    '1': 'Java',
-    '2': 'Python',
-    '3': 'C#',
-    '4': 'NodeJs',
-    '5': 'C艹'
-  },
+  typeMap: ['前端组件', '后端组件', '应用服务', '分布式工具', '微服务'],
+  languageMap: ['Java', 'Python', 'C#', 'NodeJs', 'C艹'],
   statusMap: ['下架', '上架']
 })
 
